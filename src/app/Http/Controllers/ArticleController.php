@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Article;
 use App\Services\NewsService;
 use Illuminate\Http\Request;
 
+/**
+ * @OA\Tag(name="Articles", description="Manage news articles")
+ */
 class ArticleController extends Controller
 {
     protected $newsService;
@@ -15,101 +19,85 @@ class ArticleController extends Controller
     }
 
     /**
-     * Fetch paginated articles
-     */
-    public function getArticles(Request $request)
-    {
-        $params = $request->only(['q', 'from', 'to', 'category', 'sources']);
-        $page = $request->input('page', 1); // Default to page 1 if not provided
-        $perPage = $request->input('per_page', 10); // Default to 10 articles per page
-
-        // Fetch all articles from the service
-        $articles = $this->newsService->fetchNewsApiArticles($params);
-
-        // Paginate articles manually
-        $paginatedArticles = $this->paginate($articles['articles'], $perPage, $page);
-
-        return response()->json($paginatedArticles);
-    }
-
-    /**
-     * Search for articles across all APIs with pagination
+     * @OA\Get(
+     *     path="/api/articles",
+     *     summary="Get a list of articles",
+     *     tags={"Articles"},
+     *     @OA\Parameter(
+     *         name="q",
+     *         in="query",
+     *         required=false,
+     *         description="Search query",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Articles retrieved successfully",
+     *         @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Article"))
+     *     )
+     * )
      */
     public function searchArticles(Request $request)
     {
-        $params = $request->only(['q', 'from', 'to', 'category', 'sources']);
-        $page = $request->input('page', 1);
-        $perPage = $request->input('per_page', 10);
+        $query = Article::query();
 
-        // Default query parameter
-        if (empty($params['q'])) {
-            $params['q'] = 'latest'; // Fallback to a default keyword if none is provided
+        // Apply filters
+        if ($request->has('q')) {
+            $query->where('title', 'like', '%' . $request->q . '%');
         }
 
-        // Fetch articles from different APIs
-        $newsApiArticles = $this->newsService->fetchNewsApiArticles($params);
-        $guardianArticles = $this->newsService->fetchGuardianArticles($params);
-        $nytArticles = $this->newsService->fetchNytArticles($params);
+        if ($request->has('from')) {
+            $query->where('created_at', '>=', $request->from);
+        }
 
-        // Combine all articles
-        $allArticles = array_merge(
-            $newsApiArticles['articles'] ?? [],
-            $guardianArticles['response']['results'] ?? [],
-            $nytArticles['response']['docs'] ?? []
-        );
+        if ($request->has('to')) {
+            $query->where('created_at', '<=', $request->to);
+        }
 
-        // Format articles from different APIs for uniform structure
-        $formattedArticles = array_map(function ($article) {
-            return [
-                'title' => $article['title'] ?? $article['webTitle'] ?? $article['headline']['main'] ?? 'No Title',
-                'content' => $article['content'] ?? $article['body'] ?? ($article['abstract'] ?? 'No Content'),
-                'source' => $article['source']['name'] ?? $article['sectionName'] ?? 'Unknown Source',
-                'published_at' => $article['publishedAt'] ?? $article['webPublicationDate'] ?? $article['pub_date'] ?? null,
-                'url' => $article['url'] ?? $article['webUrl'] ?? $article['web_url'] ?? null,
-            ];
-        }, $allArticles);
+        if ($request->has('category')) {
+            $query->where('category', $request->category);
+        }
 
-        // Paginate the combined and formatted articles
-        $paginatedArticles = $this->paginate($formattedArticles, $perPage, $page);
+        if ($request->has('sources')) {
+            $query->whereIn('source', (array) $request->sources);
+        }
 
-        // Return paginated results
-        return response()->json($paginatedArticles);
+        // Pagination
+        $perPage = $request->input('per_page', 10);
+        $articles = $query->paginate($perPage);
+
+        return response()->json($articles);
     }
 
+    public function getArticles(Request $request)
+    {
+        // Store the latest articles from the APIs
+        $this->newsService->fetchAndStoreArticles();
+
+        return $this->searchArticles($request);
+    }
     /**
-     * Retrieve single article details (dummy implementation)
+     * @OA\Get(
+     *     path="/api/articles/{id}",
+     *     summary="Get article details",
+     *     tags={"Articles"},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID of the article",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Article details retrieved successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/Article")
+     *     )
+     * )
      */
     public function getArticleDetails($id)
     {
-        $article = \App\Models\Article::find($id);
-
-        // Check if the article exists
-        if (!$article) {
-            return response()->json([
-                'message' => 'Article not found.',
-            ], 404);
-        }
-
-        // Return the article details
-        return response()->json([
-            'article' => $article,
-        ]);
-    }
-
-    /**
-     * Helper function to paginate an array
-     */
-    protected function paginate(array $items, $perPage, $page)
-    {
-        $offset = ($page - 1) * $perPage;
-        $paginatedItems = array_slice($items, $offset, $perPage);
-
-        return [
-            'data' => $paginatedItems,
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'total' => count($items),
-            'last_page' => ceil(count($items) / $perPage),
-        ];
+        $article = Article::findOrFail($id);
+        return response()->json($article);
     }
 }

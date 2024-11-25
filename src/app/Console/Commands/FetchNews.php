@@ -1,9 +1,9 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\NewsService;
-use App\Models\Article;
 
 class FetchNews extends Command
 {
@@ -18,15 +18,10 @@ class FetchNews extends Command
     public function handle()
     {
         $newsService = app(NewsService::class);
-        $articles = $newsService->fetchNewsApiArticles(['q' => 'latest']);
 
-        foreach ($articles['articles'] as $article) {
-            Article::updateOrCreate(
-                ['title' => $article['title']],
-                ['content' => $article['content'], 'source' => $article['source']['name']]
-            );
-        }
+        // Fetch and store articles from all APIs
+        $newsService->fetchAndStoreArticles();
 
-        $this->info('News articles fetched successfully!');
+        $this->info('News articles fetched and stored successfully!');
     }
 }

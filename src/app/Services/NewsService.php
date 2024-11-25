@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Services;
 
+use App\Models\Article;
 use Illuminate\Support\Facades\Http;
 
 class NewsService
@@ -17,45 +17,94 @@ class NewsService
         $this->nytApiKey = env('NYTIMES_API_KEY');
     }
 
-    public function fetchNewsApiArticles($params = [])
+    public function fetchAndStoreArticles()
     {
-        $defaultParams = [
-            'q' => $params['q'] ?? 'latest',   // Default keyword for search
-            'from' => $params['from'] ?? null,  // Start date filter (optional)
-            'to' => $params['to'] ?? null,      // End date filter (optional)
-            'sources' => $params['sources'] ?? null, // Specific sources (optional)
-        ];
-
-        $response = Http::get('https://newsapi.org/v2/everything', array_merge($params, $defaultParams, [
-            'apiKey' => $this->newsApiKey, // Add API key
-        ]));
-
-        return $response->successful() ? $response->json() : [];
+        $this->fetchNewsApiArticles();
+        $this->fetchGuardianArticles();
+        $this->fetchNytArticles();
     }
 
-    public function fetchGuardianArticles($params = [])
+    public function fetchNewsApiArticles()
     {
-        $response = Http::get('https://content.guardianapis.com/search', array_merge($params, [
-            'q' => $params['q'] ?? 'latest',
-            'from-date' => $params['from'] ?? null,  // From date
-            'to-date' => $params['to'] ?? null,      // To date
-            'section' => $params['category'] ?? null, // Category filter
-            'api-key' => $this->guardianApiKey,      // Add API key
-        ]));
+        $response = Http::get('https://newsapi.org/v2/everything', [
+            'apiKey' => $this->newsApiKey,
+            'q' => 'latest',
+        ]);
 
-        return $response->successful() ? $response->json() : [];
+        if ($response->successful()) {
+            $articles = $response->json()['articles'] ?? [];
+
+            foreach ($articles as $article) {
+                Article::updateOrCreate(
+                    ['title' => $article['title']],
+                    [
+                        'content' => $article['content'] ?? null,
+                        'source' => $article['source']['name'] ?? 'NewsAPI',
+                        'url' => $article['url'] ?? null,
+                        'author' => $article['author'] ?? 'Unknown',
+                        'category' => 'General', // Assign default if not present
+                    ]
+                );
+            }
+        } else {
+            \Log::error('Failed to fetch NewsAPI articles', $response->json());
+        }
     }
 
-    public function fetchNytArticles($params = [])
+    public function fetchGuardianArticles()
     {
-        $response = Http::get('https://api.nytimes.com/svc/search/v2/articlesearch.json', array_merge($params, [
-            'q' => $params['q'] ?? 'latest',
-            'begin_date' => isset($params['from']) ? str_replace('-', '', $params['from']) : null, // From date
-            'end_date' => isset($params['to']) ? str_replace('-', '', $params['to']) : null,       // To date
-            'api-key' => $this->nytApiKey,  // Add API key
-        ]));
+        $response = Http::get('https://content.guardianapis.com/search', [
+            'api-key' => $this->guardianApiKey,
+        ]);
+
+        if ($response->successful()) {
+            $articles = $response->json()['response']['results'] ?? [];
 
 
-        return $response->successful() ? $response->json() : [];
+            foreach ($articles as $article) {
+                Article::updateOrCreate(
+                    ['title' => $article['webTitle']],
+                    [
+                        'content' => $article['webTitle'], // Adjust as needed
+                        'source' => 'The Guardian',
+                        'url' => $article['webUrl'],
+                        'author' => 'The Guardian Team', // Example default
+                        'category' => $article['pillarName'] ?? 'General',
+                    ]
+                );
+            }
+        } else {
+            \Log::error('Failed to fetch Guardian articles', $response->json());
+        }
+    }
+
+    public function fetchNytArticles()
+    {
+        $response = Http::get('https://api.nytimes.com/svc/search/v2/articlesearch.json', [
+            'api-key' => $this->nytApiKey,
+        ]);
+
+        if ($response->successful()) {
+            $articles = $response->json()['response']['docs'] ?? [];
+            foreach ($articles as $article) {
+                // Extract keywords and transform them into a comma-separated string
+                $categories = collect($article['keywords'] ?? [])
+                    ->pluck('value') // Get the 'value' of each keyword
+                    ->implode(', '); // Join them into a string separated by commas
+
+                Article::updateOrCreate(
+                    ['title' => $article['headline']['main']],
+                    [
+                        'content' => $article['lead_paragraph'] ?? null,
+                        'source' => 'The New York Times',
+                        'url' => $article['web_url'],
+                        'author' => $article['byline']['original'] ?? 'Unknown',
+                        'category' => $categories ?: 'General', // Use 'General' if no keywords exist
+                    ]
+                );
+            }
+        } else {
+            \Log::error('Failed to fetch NYT articles', $response->json());
+        }
     }
 }

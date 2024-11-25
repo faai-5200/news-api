@@ -16,9 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule) {
-        // Define your scheduled tasks here
+        // fetch news every minute for testing
         $schedule->command('news:fetch')->everyMinute();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
-    })->create();
+
+    })
+    ->create();
