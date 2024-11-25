@@ -19,28 +19,43 @@ class NewsService
 
     public function fetchNewsApiArticles($params = [])
     {
-        $response = Http::get('https://newsapi.org/v2/everything', array_merge($params, [
-            'apiKey' => $this->newsApiKey,
+        $defaultParams = [
+            'q' => $params['q'] ?? 'latest',   // Default keyword for search
+            'from' => $params['from'] ?? null,  // Start date filter (optional)
+            'to' => $params['to'] ?? null,      // End date filter (optional)
+            'sources' => $params['sources'] ?? null, // Specific sources (optional)
+        ];
+
+        $response = Http::get('https://newsapi.org/v2/everything', array_merge($params, $defaultParams, [
+            'apiKey' => $this->newsApiKey, // Add API key
         ]));
 
-        return $response->json();
+        return $response->successful() ? $response->json() : [];
     }
 
     public function fetchGuardianArticles($params = [])
     {
         $response = Http::get('https://content.guardianapis.com/search', array_merge($params, [
-            'api-key' => $this->guardianApiKey,
+            'q' => $params['q'] ?? 'latest',
+            'from-date' => $params['from'] ?? null,  // From date
+            'to-date' => $params['to'] ?? null,      // To date
+            'section' => $params['category'] ?? null, // Category filter
+            'api-key' => $this->guardianApiKey,      // Add API key
         ]));
 
-        return $response->json();
+        return $response->successful() ? $response->json() : [];
     }
 
     public function fetchNytArticles($params = [])
     {
         $response = Http::get('https://api.nytimes.com/svc/search/v2/articlesearch.json', array_merge($params, [
-            'api-key' => $this->nytApiKey,
+            'q' => $params['q'] ?? 'latest',
+            'begin_date' => isset($params['from']) ? str_replace('-', '', $params['from']) : null, // From date
+            'end_date' => isset($params['to']) ? str_replace('-', '', $params['to']) : null,       // To date
+            'api-key' => $this->nytApiKey,  // Add API key
         ]));
 
-        return $response->json();
+
+        return $response->successful() ? $response->json() : [];
     }
 }
