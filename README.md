@@ -15,7 +15,7 @@
    Clone the repository to your local machine:
 
    ```
-   git clone https://github.com/yourusername/news-api.git
+   git clone https://github.com/faai-5200/news-api.git
    cd news-api
    ```
 
