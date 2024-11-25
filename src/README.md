@@ -1,66 +1,142 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# News API Documentation
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Setup
 
-## About Laravel
+### Prerequisites
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Docker
+- Docker Compose
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Docker Setup
 
-## Learning Laravel
+1. **Clone the Repository**:
+   Clone the repository to your local machine:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+   ```
+   git clone https://github.com/yourusername/news-api.git
+   cd news-api
+   ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2. **Build and Start Docker Containers**:
+   Run the following command to build and start the Docker containers for the app, webserver (Nginx), and MySQL:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+   ```
+   docker-compose up --build
+   ```
 
-## Laravel Sponsors
+This command will create and run the following services defined in the `docker-compose.yml` file:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **app (PHP service)**:
+    - Builds using the Dockerfile at `docker/php/Dockerfile`.
+    - Mounts the local `./src` directory to `/var/www/html` inside the container.
+    - Runs on the `laravel` network.
 
-### Premium Partners
+- **webserver (Nginx service)**:
+    - Builds using the Dockerfile at `docker/nginx/Dockerfile`.
+    - Mounts the local `./src` directory to `/var/www/html` inside the container.
+    - Exposes port `8080` on your local machine for web access.
+    - Depends on the `app` service (PHP).
+    - Runs on the `laravel` network.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+- **mysql (MySQL service)**:
+    - Uses the official MySQL 8.0 image.
+    - Exposes port `3306` for MySQL access.
+    - Sets up environment variables like `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, and `MYSQL_PASSWORD`.
+    - Uses a named volume `mysql_data` to persist data across container restarts.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Set Up Environment Variables
 
-## Code of Conduct
+Make sure to update the `.env` file with your database credentials and any other required settings.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+To do this, copy the `.env.example` file to `.env`:
 
-## Security Vulnerabilities
+```
+cp .env.example .env
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Set Up Environment Variables
 
-## License
+Make sure to update the `.env` file with your database credentials and any other required settings, including API keys for news sources.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+To do this, copy the `.env.example` file to `.env`:
+
+```
+cp .env.example .env
+```
+
+Then, open the `.env` file and configure the following settings based on your environment:
+
+- `DB_HOST`: Hostname of your MySQL database (typically `mysql` if using the Docker container).
+- `DB_PORT`: Port number for MySQL (default is `3306`).
+- `DB_DATABASE`: The name of your database (default is `news`).
+- `DB_USERNAME`: The database user (default is `user`).
+- `DB_PASSWORD`: The password for the database user (default is `password`).
+
+Additionally, you will need to provide API keys for accessing external news APIs. Replace the placeholder keys with your actual API keys:
+
+- `NEWSAPI_KEY`: Your API key for News API (e.g., `846c7b64a3184b08a42792dd9530a5ae`).
+- `GUARDIAN_API_KEY`: Your API key for The Guardian (e.g., `eac96a45-3660-44e9-a09e-3984d95ffd30`).
+- `NYTIMES_API_KEY`: Your API key for The New York Times (e.g., `mCeEwypaGY6oaTe36IJIORhHp912PnIS`).
+
+After configuring the `.env` file, save the changes and proceed with setting up your environment.
+
+Ensure that these values are correct for your local or production environment.
+
+---
+
+### Access the Application
+
+Once the containers are up and running, the application should be accessible at:
+
+- `http://localhost:8080` for the web interface.
+- Swagger UI (for API documentation) will be available at `http://localhost:8080/api/documentation`.
+
+---
+
+### Swagger Documentation
+
+Swagger has been integrated to automatically generate API documentation for easy reference. You can explore the available API endpoints, their descriptions, and request/response examples directly in the Swagger UI.
+
+#### Key API Endpoints:
+- **Register User**: `POST /api/register` - Registers a new user with name, email, and password.
+- **Login User**: `POST /api/login` - Log in to get a bearer token for authenticated requests.
+- **Personalized Feed**: `GET /api/personalized-feed` - Retrieves a personalized feed of articles based on user preferences (supports pagination).
+- **Search Articles**: `GET /api/articles/search?q={query}` - Search for articles based on title, content, category, sources, and date range (supports pagination).
+
+---
+
+### Example Request:
+
+#### Login:
+To log in, send a `POST` request to `/api/login` with the following body:
+
+```
+{
+"email": "johndoe@example.com",
+"password": "yourpassword"
+}
+```
+
+The response will include an `access_token` for use in subsequent API requests.
+
+---
+
+### Pagination
+
+For endpoints that return lists (e.g., `/api/articles`, `/api/personalized-feed`), pagination is available. You can control the number of items per page using the `per_page` query parameter.
+
+#### Example:
+
+```
+GET /api/articles?per_page=10&q=tech
+```
+
+This request will return 10 articles related to "tech" per page.
+
+---
+
+This version of the README now provides a more specific breakdown of the services defined in your `docker-compose.yml` file, and how they interact. It also includes the necessary steps to get your environment set up using Docker Compose.
