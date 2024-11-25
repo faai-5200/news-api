@@ -30,10 +30,35 @@ class ArticleController extends Controller
      *         description="Search query",
      *         @OA\Schema(type="string")
      *     ),
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Number of items per page",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=10)
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Articles retrieved successfully",
-     *         @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Article"))
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="current_page", type="integer", example=1),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(ref="#/components/schemas/Article")
+     *             ),
+     *             @OA\Property(property="total", type="integer", example=100),
+     *             @OA\Property(property="per_page", type="integer", example=10),
+     *             @OA\Property(property="last_page", type="integer", example=10),
+     *             @OA\Property(property="next_page_url", type="string", example="http://localhost:8080/api/articles?page=2"),
+     *             @OA\Property(property="prev_page_url", type="string", example="http://localhost:8080/api/articles?page=1")
+     *         )
      *     )
      * )
      */
@@ -43,7 +68,10 @@ class ArticleController extends Controller
 
         // Apply filters
         if ($request->has('q')) {
-            $query->where('title', 'like', '%' . $request->q . '%');
+            $query->where(function($query) use ($request) {
+                $query->where('title', 'like', '%' . $request->q . '%')
+                    ->orWhere('content', 'like', '%' . $request->q . '%');
+            });
         }
 
         if ($request->has('from')) {
@@ -68,7 +96,6 @@ class ArticleController extends Controller
 
         return response()->json($articles);
     }
-
     public function getArticles(Request $request)
     {
         // Store the latest articles from the APIs

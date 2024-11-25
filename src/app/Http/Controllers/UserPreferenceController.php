@@ -85,27 +85,41 @@ class UserPreferenceController extends Controller
     {
         return response()->json($request->user()->preferences);
     }
-
     /**
      * @OA\Get(
      *     path="/api/personalized-feed",
      *     summary="Get personalized articles based on user preferences",
      *     tags={"User Preferences"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Personalized feed retrieved successfully",
      *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(
-     *                 type="object",
-     *                 @OA\Property(property="title", type="string", example="Tech News Update"),
-     *                 @OA\Property(property="content", type="string", example="Content of the article"),
-     *                 @OA\Property(property="source", type="string", example="BBC"),
-     *                 @OA\Property(property="author", type="string", example="John Doe"),
-     *                 @OA\Property(property="category", type="string", example="Technology"),
-     *                 @OA\Property(property="url", type="string", example="https://bbc.com/article")
-     *             )
+     *             type="object",
+     *             @OA\Property(property="current_page", type="integer", example=1),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="title", type="string", example="Tech News Update"),
+     *                     @OA\Property(property="content", type="string", example="Content of the article"),
+     *                     @OA\Property(property="source", type="string", example="BBC"),
+     *                     @OA\Property(property="author", type="string", example="John Doe"),
+     *                     @OA\Property(property="category", type="string", example="Technology"),
+     *                     @OA\Property(property="url", type="string", example="https://bbc.com/article")
+     *                 )
+     *             ),
+     *             @OA\Property(property="total", type="integer", example=100),
+     *             @OA\Property(property="per_page", type="integer", example=10),
+     *             @OA\Property(property="last_page", type="integer", example=10),
+     *             @OA\Property(property="next_page_url", type="string", example="http://localhost:8080/api/personalized-feed?page=2"),
+     *             @OA\Property(property="prev_page_url", type="string", example="http://localhost:8080/api/personalized-feed?page=1")
      *         )
      *     )
      * )
@@ -135,7 +149,7 @@ class UserPreferenceController extends Controller
                     $query->orWhere('author', 'like', '%' . $author . '%');
                 }
             })
-            ->orderBy('created_at', 'desc') //Order by latest articles
+            ->orderBy('created_at', 'desc') // Order by latest articles
             ->paginate(10); // Paginate the results
 
         return response()->json($articles);
