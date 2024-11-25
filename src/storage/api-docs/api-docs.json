@@ -442,7 +442,7 @@
         },
         {
             "name": "User Preferences",
-            "description": "Manage user preferences"
+            "description": "Manage user preferences and show using preferred articles"
         },
         {
             "name": "Auth",
